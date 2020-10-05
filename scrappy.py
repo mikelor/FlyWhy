@@ -51,14 +51,13 @@ def parse(session, url):
 
     print('[parse] url:', url)
 
-    soup = get_soup(session, url)
+    soup = get_soup(session, url, True)
 
     if not soup:
         print('[parse] no soup:', url)
         return
-
-    mytext = soup.title
-    num_reviews = soup.find('span', class_='_33O9dg0j').text # get text
+    num_reviews = soup.find('span', class_='_2tNtmCyi').text # get text
+    #num_reviews = soup.find('span', class_='_33O9dg0j').text # get text
     num_reviews = num_reviews[0:-8] 
     num_reviews = num_reviews.replace(',', '')
     num_reviews = int(num_reviews) # convert text into integer
@@ -84,6 +83,10 @@ def parse(session, url):
             break
 
         offset += 5
+
+        # For testing purposes, let's stop after fetching a few reviews
+        if offset > 10:
+            break
 
     return items
 
@@ -118,7 +121,7 @@ def parse_reviews(session, url):
 
     print('[parse_reviews] url:', url)
 
-    soup =  get_soup(session, url)
+    soup =  get_soup(session, url, True)
 
     if not soup:
         print('[parse_reviews] no soup:', url)
@@ -193,7 +196,9 @@ DB_COLUMN   = 'review_body'
 DB_COLUMN1 = 'review_date'
 
 start_urls = [
+    'https://www.tripadvisor.com/Airline_Review-d8729017-Reviews-Alaska-Airlines.html',
     'https://www.tripadvisor.ca/Hotel_Review-g60982-d87016-Reviews-Hilton_Hawaiian_Village_Waikiki_Beach_Resort-Honolulu_Oahu_Hawaii.html',
+
 ]
 
 lang = 'en'
