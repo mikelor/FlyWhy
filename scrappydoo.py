@@ -23,3 +23,6 @@ source = client_response.mainFrame().toHtml()
 soup = bs.BeautifulSoup(source, 'lxml')
 js_test = soup.find('p', class_='jstest')
 print(js_test.text)
+
+https://pythonprogramming.net/basic-gui-pyqt-tutorial/
+https://www.riverbankcomputing.com/static/Docs/PyQt5/module_index.html#ref-module-index
