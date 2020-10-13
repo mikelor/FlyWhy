@@ -1,9 +1,10 @@
-from bs4 import BeautifulSoup
+import csv
+import io
+import time
+
 
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
-
-import time
 
 #
 # Classes
@@ -14,8 +15,6 @@ class Review:
         self.Rating = rating
         self.Itinerary = ""
 
-        self.Region = ""
-        self.Class = ""
         self.DateOfReview = ""
         self.DateofTravel = ""
         self.Title = ""
@@ -26,9 +25,11 @@ class Review:
 
 
 class Itinerary:
-    def __init__(self, origin, destination):
+    def __init__(self, origin, destination, region, cabin):
         self.Origin = origin
         self.Destination = destination
+        self.Region = region
+        self.Cabin = cabin
     
 
 # startWebDriverService()
@@ -104,7 +105,7 @@ def getReviews(driver, url, reviewCount):
         offset += 5
 
         # For testing purposes, let's stop after fetching a few reviews
-        if offset > 5:
+        if offset > 10:
             break
 
     return reviews
@@ -126,8 +127,9 @@ def getReviewsForUrl(driver, url):
         rating   = getReviewRating(reviewDiv)
         review   = Review(reviewId, rating)
 
+        # Get Itinerary
         review.setItinerary(getReviewItinerary(reviewDiv))
-
+        
         # Add the review to the list
         reviews.append(review)
 
@@ -152,11 +154,37 @@ def getReviewRating(reviewDiv):
 # getReviewItinerary
 #
 def getReviewItinerary(reviewDiv):
-    itineraryString = (reviewDiv.find_elements_by_class_name('_3tp-5a1G')[0]).text
-    itineraryList = itineraryString.split(' - ')
-    itinerary = Itinerary(itineraryList[0], itineraryList[1])
+    originDestinationString = (reviewDiv.find_elements_by_class_name('_3tp-5a1G')[0]).text
+    originDestinationList = originDestinationString.split(' - ')
+
+    region =  (reviewDiv.find_elements_by_class_name('_3tp-5a1G')[1]).text
+    cabin =  (reviewDiv.find_elements_by_class_name('_3tp-5a1G')[2]).text
+
+    itinerary = Itinerary(originDestinationList[0], originDestinationList[1], region, cabin)
 
     return itinerary
+
+#
+#
+#
+def writeToCsv(
+    reviews, 
+    filename='results.csv',
+    mode='w'):
+
+    with open(filename, mode, encoding="utf-8") as reviewFile:
+        reviewFileWriter = csv.writer(reviewFile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL, lineterminator='\n')
+        
+        reviewFileWriter.writerow(["Id", "Rating", "Origin", "Destination", "Region", "Cabin"])
+        for review in reviews:
+            reviewFileWriter.writerow([review.Id, 
+                                       review.Rating, 
+                                       review.Itinerary.Origin, 
+                                       review.Itinerary.Destination, 
+                                       review.Itinerary.Region, 
+                                       review.Itinerary.Cabin])
+
+
 ####
 #
 # Entry Point
@@ -176,4 +204,6 @@ reviewCount = getReviewCount(driver, airlineReviewCountClassId)
 reviews = getReviews(driver, baseUrl, reviewCount)
 
 for review in reviews:
-    print(review.Id, review.Rating, review.Itinerary.Origin, review.Itinerary.Destination)
+    print(review.Id, review.Rating, review.Itinerary.Origin, review.Itinerary.Destination, review.Itinerary.Region, review.Itinerary.Cabin)
+
+writeToCsv(reviews, 'myreviews.csv', mode='w')
