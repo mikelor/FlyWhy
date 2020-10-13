@@ -31,11 +31,12 @@ class Itinerary:
         self.Region = region
         self.Cabin = cabin
     
-
+#
 # startWebDriverService()
 # Starts the web driver as a service, this improves performance and does not require a manual start
 # of the chrome driver.
 # TODO: Make it actually work.
+#
 def startWebDriverService():
     service = Service('./thirdparty/chromedriver.exe')
     service.start()
@@ -43,27 +44,14 @@ def startWebDriverService():
 
     return driver
 
+#
 # startWebDriver()
 # Starts the web driver for scraping. For best performance, make sure you start the chromedriver
 # before running this python script.
+#
 def startWebDriver():
     driver = webdriver.Chrome('./thirdparty/chromedriver.exe')
     return driver
-
-
-
-def getReviews(driver, reviewIds):
-    return
-
-# parseReview
-def parseReviewDiv(reviewDiv):
-    review = ""
-    print(reviewDiv.text)
-    
-    return review
-
-
-
 
 #
 # getReviewCount()
@@ -71,6 +59,7 @@ def parseReviewDiv(reviewDiv):
 # Get's the total number of reviews for a property
 #   driver: A handle to the selenium webdriver
 #   class:  The specific class of the span tag that holds the review count
+#
 def getReviewCount(driver, classId):
     reviewCountSpan = driver.find_element_by_class_name(classId)
 
@@ -82,6 +71,10 @@ def getReviewCount(driver, classId):
 
 #
 # getAllReviews(driver, url, reviewCount)
+#
+# This retrieves all the reviews for and Airline. This pattern can be modified 
+# for other review types, but we will probably have to revisit the css class names that
+# are used for filtering.
 #
 def getReviews(driver, url, reviewCount):
 
@@ -112,6 +105,11 @@ def getReviews(driver, url, reviewCount):
 
 #
 # getReviewsForUrl
+#
+# Each page has five reviews, this will get the high level review information for each review, and 
+# then iterate through each review to get *even more* :) detail information by calling the url for
+# each individual review.
+# TODO: Impement the Individual Review Retrieval and Parsing
 #
 def getReviewsForUrl(driver, url):
     # Get the review url page
@@ -152,6 +150,9 @@ def getReviewRating(reviewDiv):
 
 #
 # getReviewItinerary
+# 
+# In this case, we're considering an Itinerary to be a reviewer's origin, destination, region of travel, and class of cabin for 
+# travel. We don't have any specifics such as the Date of Travel (other than the "month", or date of review)
 #
 def getReviewItinerary(reviewDiv):
     originDestinationString = (reviewDiv.find_elements_by_class_name('_3tp-5a1G')[0]).text
@@ -165,7 +166,9 @@ def getReviewItinerary(reviewDiv):
     return itinerary
 
 #
+# writeToCsv
 #
+# Write out the data (with headers) to a csv file. 
 #
 def writeToCsv(
     reviews, 
@@ -190,6 +193,8 @@ def writeToCsv(
 # Entry Point
 #
 ####
+
+
 #driver = startWebDriverService()
 driver = startWebDriver()
 
