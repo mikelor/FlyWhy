@@ -1,6 +1,4 @@
 import csv
-import io
-from os import name
 import platform
 import time
 
