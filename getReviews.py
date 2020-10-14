@@ -1,5 +1,6 @@
 import csv
 import io
+from os import name
 import platform
 import time
 
@@ -20,16 +21,20 @@ class Review:
     def __init__(self, id, rating):
         self.Id = id
         self.Rating = rating
-        self.Itinerary = ""
 
-        self.DateOfReview = ""
-        self.DateofTravel = ""
+        self.Date = ""
+        self.TravelDate = ""
         self.Title = ""
         self.Text = ""
+
+        self.Itinerary = ""
+        self.Reviewer = ""
 
     def setItinerary(self, itinerary):
         self.Itinerary = itinerary
 
+    def setReviewer(self, reviewer):
+        self.Reviewer = reviewer
 
 class Itinerary:
     def __init__(self, origin, destination, region, cabin):
@@ -38,6 +43,11 @@ class Itinerary:
         self.Region = region
         self.Cabin = cabin
 
+class Reviewer:
+    def __init__(self, id, name, location):
+        self.Id = id
+        self.Name = name
+        self.Location = location
 
 class UnsupportedOSError(Exception):
     pass
@@ -103,18 +113,24 @@ def getReviews(driver, url, reviewCount):
     reviews = []
     offset = 0
 
+    # Startup a second webdriver to bring up more detail on the user review while
+    # still maintaining the original driver to page through all reviews
+    userReviewDriver = startWebDriver()
+
     while(True):
         reviewUrl = urlTemplate.format(offset)
-
-        reviewSubset = getReviewsForUrl(driver, reviewUrl)
+        reviewSubset = getReviewsForUrl(driver, userReviewDriver, reviewUrl)
+        
         if not reviewSubset:
             break
 
         reviews += reviewSubset
 
+        # If we receive less than 5 reviews, we're most likely at the end
         if len(reviewSubset) < 5:
             break
       
+        # Should probably get rid of this magic number (ReviewsPerPage)
         offset += 5
 
         # For testing purposes, let's stop after fetching a few reviews
@@ -124,15 +140,14 @@ def getReviews(driver, url, reviewCount):
     return reviews
 
 
-def getReviewsForUrl(driver, url):
+def getReviewsForUrl(driver, userReviewDriver, url):
     """Each page has five reviews, this will get the high level review information for each review, and 
     then iterate through each review to get *even more* :) detail information by calling the url for
     each individual review.
-    TODO: Impement the Individual Review Retrieval and Parsing
     """
     # Get the review url page
     driver.get(url)
-    time.sleep(5)
+    time.sleep(2)
 
     companyName = driver.find_element_by_xpath('//h1[@class="_3ggwzaPV"]')
     
@@ -146,23 +161,20 @@ def getReviewsForUrl(driver, url):
         # Get Itinerary
         review.setItinerary(getReviewItinerary(reviewDiv))
         
+        review = getReviewDetail(userReviewDriver, reviewDiv, review)
+        
         # Add the review to the list
         reviews.append(review)
 
     return reviews
 
-#
-# getReviewRating(reviewDiv)
-#
 
-#
 def getReviewRating(reviewDiv):
     """ The rating for the review is stored as a class on an inner span with two classes applied
     The first class identifies it as a "bubble rating", while the second defines the level from 1 to 5
 
     Example: class="ui_bubble_rating bubble_10"
     """
-
     ratingString = (((reviewDiv.find_element_by_class_name('ui_bubble_rating')).get_attribute('class')).split())[1]
     rating = (int(ratingString[-2:]))
     rating = rating/10
@@ -185,6 +197,34 @@ def getReviewItinerary(reviewDiv):
     return itinerary
 
 
+def getReviewDetail(userReviewDriver, reviewDiv, review):
+    """ Dive in a little deeper on this review by finding and then calling the detail review page.
+    There is some information that's missing, or just easier to get at on the detail review page, and this can
+    potentially be leveraged for other types of reviews
+    TODO: #2 Get category ratings if they exist
+    """
+    userReviewUrl = reviewDiv.find_element_by_class_name('ocfR3SKN').get_attribute('href')
+    userReviewDriver.get(userReviewUrl)
+    time.sleep(1)
+
+    userReviewDiv = userReviewDriver.find_element_by_xpath('//div[@id="review_' + review.Id + '"]') 
+
+    # Get the review
+    review.Date = userReviewDiv.find_element_by_xpath('//span[@class="ratingDate relativeDate"]').get_attribute('title')
+    review.TravelDate = userReviewDiv.find_element_by_xpath('//div[@data-prwidget-name="reviews_stay_date_hsx"]').text[16:] # Trime "Date of Travel: "
+    review.Title = userReviewDriver.find_element_by_xpath('//div/a[@id="rn' + review.Id + '"]/span').text
+    review.Text = userReviewDiv.find_element_by_xpath('//div[@class="entry"]/p').text
+
+    # Gather information about the reviewer 
+    id = userReviewDiv.find_element_by_xpath('//div[@class="member_info"]/div').get_attribute('id')  # TODO: Parse the user ID string to just the substring 
+    name = userReviewDiv.find_element_by_xpath('//div[@class="username mo"]/span').text 
+    location = userReviewDiv.find_element_by_xpath('//div[@class="location"]/span').text 
+
+    review.setReviewer(Reviewer(id, name, location))
+
+    return review    
+
+
 def writeToCsv(
         reviews, 
         filename='results.csv',
@@ -194,14 +234,33 @@ def writeToCsv(
     with open(filename, mode, encoding="utf-8") as reviewFile:
         reviewFileWriter = csv.writer(reviewFile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL, lineterminator='\n')
         
-        reviewFileWriter.writerow(["Id", "Rating", "Origin", "Destination", "Region", "Cabin"])
+        reviewFileWriter.writerow(["Id",
+                                   "Rating",
+                                   "Reviewer.Id",
+                                   "Reviewer.Name",
+                                   "Reviewer.Location",
+                                   "Itinerary.Origin",
+                                   "Itinerary.Destination",
+                                   "Itinerary.Region",
+                                   "Itinerary.Cabin",
+                                   "Date",
+                                   "TravelDate",
+                                   "Title",
+                                   "Text"])
         for review in reviews:
             reviewFileWriter.writerow([review.Id, 
                                        review.Rating, 
+                                       review.Reviewer.Id,
+                                       review.Reviewer.Name,
+                                       review.Reviewer.Location,
                                        review.Itinerary.Origin, 
                                        review.Itinerary.Destination, 
                                        review.Itinerary.Region, 
-                                       review.Itinerary.Cabin])
+                                       review.Itinerary.Cabin,
+                                       review.Date,
+                                       review.TravelDate,
+                                       review.Title,
+                                       review.Text])
 
 def runDefault():
     #driver = startWebDriverService()
@@ -210,7 +269,7 @@ def runDefault():
     # Get the Reviews for Alaska Airlines
     baseUrl = 'https://www.tripadvisor.com/Airline_Review-d8729017-Reviews-Alaska-Airlines.html'
     driver.get(baseUrl)
-    time.sleep(5) 
+    time.sleep(3) 
 
     airlineReviewCountClassId = '_2tNtmCyi'
     reviewCount = getReviewCount(driver, airlineReviewCountClassId)
@@ -218,16 +277,21 @@ def runDefault():
     reviews = getReviews(driver, baseUrl, reviewCount)
 
     for review in reviews:
-        print(review.Id, review.Rating, review.Itinerary.Origin, review.Itinerary.Destination, review.Itinerary.Region, review.Itinerary.Cabin)
+        print(review.Id,
+              review.Rating,
+              review.Reviewer.Id,
+              review.Reviewer.Name,
+              review.Reviewer.Location,
+              review.Itinerary.Origin,
+              review.Itinerary.Destination,
+              review.Itinerary.Region,
+              review.Itinerary.Cabin,
+              review.Date,
+              review.TravelDate,
+              review.Title,
+              review.Text)
 
     writeToCsv(reviews, 'myreviews.csv', mode='w')
-
-
-####
-#
-# Entry Point
-#
-####
 
 if __name__ == "__main__":
     runDefault()
