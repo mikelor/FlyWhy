@@ -1,10 +1,13 @@
 import csv
+import logging
 import platform
 import time
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
+
+logging.basicConfig(level=logging.INFO)
 
 D_PATH_CHROMEDRIVER = {
     'Windows':'./thirdparty/chromedriver.exe',
@@ -15,6 +18,7 @@ D_PATH_CHROMEDRIVER = {
 #
 # Classes
 #
+
 class Review:
     def __init__(self, id, rating):
         self.Id = id
@@ -100,44 +104,6 @@ def getReviewCount(driver, classId):
     return reviewCount
 
 
-def getReviews(driver, url, reviewCount):
-    """ This retrieves all the reviews for and Airline. This pattern can be modified 
-    for other review types, but we will probably have to revisit the css class names that
-    are used for filtering.
-    """
-
-    urlTemplate = url.replace('.html', '-or{}.html')
-
-    reviews = []
-    offset = 0
-
-    # Startup a second webdriver to bring up more detail on the user review while
-    # still maintaining the original driver to page through all reviews
-    userReviewDriver = startWebDriver()
-
-    while(True):
-        reviewUrl = urlTemplate.format(offset)
-        reviewSubset = getReviewsForUrl(driver, userReviewDriver, reviewUrl)
-        
-        if not reviewSubset:
-            break
-
-        reviews += reviewSubset
-
-        # If we receive less than 5 reviews, we're most likely at the end
-        if len(reviewSubset) < 5:
-            break
-      
-        # Should probably get rid of this magic number (ReviewsPerPage)
-        offset += 5
-
-        # For testing purposes, let's stop after fetching a few reviews
-        if offset > 10:
-            break
-
-    return reviews
-
-
 def getReviewsForUrl(driver, userReviewDriver, url):
     """Each page has five reviews, this will get the high level review information for each review, and 
     then iterate through each review to get *even more* :) detail information by calling the url for
@@ -147,7 +113,7 @@ def getReviewsForUrl(driver, userReviewDriver, url):
     driver.get(url)
     time.sleep(2)
 
-    companyName = driver.find_element_by_xpath('//h1[@class="_3ggwzaPV"]')
+    ## companyName = driver.find_element_by_xpath('//h1[@class="_3ggwzaPV"]')
     
     reviews = []
     reviewDivs = driver.find_elements_by_xpath('//div[@data-reviewid]')
@@ -223,73 +189,150 @@ def getReviewDetail(userReviewDriver, reviewDiv, review):
     return review    
 
 
-def writeToCsv(
-        reviews, 
-        filename='results.csv',
-        mode='w'):
-    """ Write out the data (with headers) to a csv file. """
-
-    with open(filename, mode, encoding="utf-8") as reviewFile:
-        reviewFileWriter = csv.writer(reviewFile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL, lineterminator='\n')
+def _addHeadersToCSV(fCSV):
+    """ Add headers to a CSV filestream handle """
+    reviewFileWriter = csv.writer(fCSV, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL, lineterminator='\n')
         
-        reviewFileWriter.writerow(["Id",
-                                   "Rating",
-                                   "Reviewer.Id",
-                                   "Reviewer.Name",
-                                   "Reviewer.Location",
-                                   "Itinerary.Origin",
-                                   "Itinerary.Destination",
-                                   "Itinerary.Region",
-                                   "Itinerary.Cabin",
-                                   "Date",
-                                   "TravelDate",
-                                   "Title",
-                                   "Text"])
-        for review in reviews:
-            reviewFileWriter.writerow([review.Id, 
-                                       review.Rating, 
-                                       review.Reviewer.Id,
-                                       review.Reviewer.Name,
-                                       review.Reviewer.Location,
-                                       review.Itinerary.Origin, 
-                                       review.Itinerary.Destination, 
-                                       review.Itinerary.Region, 
-                                       review.Itinerary.Cabin,
-                                       review.Date,
-                                       review.TravelDate,
-                                       review.Title,
-                                       review.Text])
+    reviewFileWriter.writerow(["Id",
+                                "Rating",
+                                "Reviewer.Id",
+                                "Reviewer.Name",
+                                "Reviewer.Location",
+                                "Itinerary.Origin",
+                                "Itinerary.Destination",
+                                "Itinerary.Region",
+                                "Itinerary.Cabin",
+                                "Date",
+                                "TravelDate",
+                                "Title",
+                                "Text"])
 
-def runDefault():
-    #driver = startWebDriverService()
+    return fCSV
+
+
+def appendToCsv(reviews, fCSV):
+    """ Append the data to a csv filestream handle. """
+
+    reviewFileWriter = csv.writer(fCSV, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL, lineterminator='\n')
+        
+    for review in reviews:
+        reviewFileWriter.writerow([review.Id, 
+                                    review.Rating, 
+                                    review.Reviewer.Id,
+                                    review.Reviewer.Name,
+                                    review.Reviewer.Location,
+                                    review.Itinerary.Origin, 
+                                    review.Itinerary.Destination, 
+                                    review.Itinerary.Region, 
+                                    review.Itinerary.Cabin,
+                                    review.Date,
+                                    review.TravelDate,
+                                    review.Title,
+                                    review.Text])
+
+    return fCSV
+
+
+def batchWriteToCsv(reviews, fCSV):
+    """ Write out the data (with headers) to a csv filestream handle in one batch. """
+    
+    reviewFileWriter = csv.writer(fCSV, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL, lineterminator='\n')
+    
+    fCSV = _addHeadersToCSV(fCSV)
+
+    for review in reviews:
+        reviewFileWriter.writerow([review.Id, 
+                                    review.Rating, 
+                                    review.Reviewer.Id,
+                                    review.Reviewer.Name,
+                                    review.Reviewer.Location,
+                                    review.Itinerary.Origin, 
+                                    review.Itinerary.Destination, 
+                                    review.Itinerary.Region, 
+                                    review.Itinerary.Cabin,
+                                    review.Date,
+                                    review.TravelDate,
+                                    review.Title,
+                                    review.Text])
+    return fCSV
+
+
+def streamReviewsToCSV(
+        max=5, 
+        pathCSV='./data/raw/myreviews.csv', 
+        baseUrl='https://www.tripadvisor.com/Airline_Review-d8729017-Reviews-Alaska-Airlines.html', 
+        preview=False):
+    """
+    Fetch reviews by page and stream to CSV file
+
+    Parameters:
+        - max: stop after this number of reviews is reached, or set to None to continue exhaustively
+        - pathCSV: file path to save the desired csv file 
+        - preview: print the results to terminal
+
+    """
+    urlTemplate = baseUrl.replace('.html', '-or{}.html')
+
+    # Start the primary webdriver that loops through the pages of reviews
     driver = startWebDriver()
+    
+    # Startup a second webdriver to bring up more detail pages on the user review while
+    # still maintaining the original driver to page through all reviews
+    userReviewDriver = startWebDriver()
 
-    # Get the Reviews for Alaska Airlines
-    baseUrl = 'https://www.tripadvisor.com/Airline_Review-d8729017-Reviews-Alaska-Airlines.html'
+    # Open a new CSV file and add the headers.  Note: it will clobber an existing file.
+    fReviewCSV = open(pathCSV, "w", encoding="utf-8")
+    fReviewCSV = _addHeadersToCSV(fReviewCSV)
+
+    # Get the Reviews for given airline at the base url
     driver.get(baseUrl)
     time.sleep(3) 
 
+    # Get the total review count for informational purposes
     airlineReviewCountClassId = '_2tNtmCyi'
     reviewCount = getReviewCount(driver, airlineReviewCountClassId)
+    logging.info(f"Fetching {max} of {reviewCount} reviews...")
 
-    reviews = getReviews(driver, baseUrl, reviewCount)
+    # Loop through all the results or until you hit the max and stream results
+    offset = 0
+    while(True):
+        reviewUrl = urlTemplate.format(offset)
+        reviewSubset = getReviewsForUrl(driver, userReviewDriver, reviewUrl)
 
-    for review in reviews:
-        print(review.Id,
-              review.Rating,
-              review.Reviewer.Id,
-              review.Reviewer.Name,
-              review.Reviewer.Location,
-              review.Itinerary.Origin,
-              review.Itinerary.Destination,
-              review.Itinerary.Region,
-              review.Itinerary.Cabin,
-              review.Date,
-              review.TravelDate,
-              review.Title,
-              review.Text)
+        # If not more reviews, complete loop
+        if not reviewSubset: break
 
-    writeToCsv(reviews, './data/raw/myreviews.csv', mode='w')
+        # Preview reviews in terminal
+        if preview:
+            for review in reviewSubset:
+                logging.info("|".join([str(x) for x in [review.Id,
+                    review.Rating,
+                    review.Reviewer.Id,
+                    review.Reviewer.Name,
+                    review.Reviewer.Location,
+                    review.Itinerary.Origin,
+                    review.Itinerary.Destination,
+                    review.Itinerary.Region,
+                    review.Itinerary.Cabin,
+                    review.Date,
+                    review.TravelDate,
+                    review.Title,
+                    review.Text]]))
+
+        # Batch save reviews to file
+        fReviewCSV = appendToCsv(reviewSubset, fReviewCSV)
+
+        # Update counter
+        offset += len(reviewSubset)
+        logging.info(f"Total retrieved: {offset}")
+
+        if max and offset >= max: 
+            logging.info("Desired max reviews reached, stopping now.")
+            break
+
+    # Cleanup
+    fReviewCSV.close()
+    
 
 if __name__ == "__main__":
-    runDefault()
+    streamReviewsToCSV(max=10, preview=False)
