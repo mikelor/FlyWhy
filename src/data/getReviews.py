@@ -189,9 +189,9 @@ def getReviewDetail(userReviewDriver, reviewDiv, review):
     return review    
 
 
-def _addHeadersToCSV(fCSV):
+def _addHeadersToCsv(fCsv):
     """ Add headers to a CSV filestream handle """
-    reviewFileWriter = csv.writer(fCSV, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL, lineterminator='\n')
+    reviewFileWriter = csv.writer(fCsv, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL, lineterminator='\n')
         
     reviewFileWriter.writerow(["Id",
                                 "Rating",
@@ -207,13 +207,13 @@ def _addHeadersToCSV(fCSV):
                                 "Title",
                                 "Text"])
 
-    return fCSV
+    return fCsv
 
 
-def appendToCsv(reviews, fCSV):
+def appendToCsv(reviews, fCsv):
     """ Append the data to a csv filestream handle. """
 
-    reviewFileWriter = csv.writer(fCSV, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL, lineterminator='\n')
+    reviewFileWriter = csv.writer(fCsv, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL, lineterminator='\n')
         
     for review in reviews:
         reviewFileWriter.writerow([review.Id, 
@@ -230,15 +230,15 @@ def appendToCsv(reviews, fCSV):
                                     review.Title,
                                     review.Text])
 
-    return fCSV
+    return fCsv
 
 
-def batchWriteToCsv(reviews, fCSV):
+def batchWriteToCsv(reviews, fCsv):
     """ Write out the data (with headers) to a csv filestream handle in one batch. """
     
-    reviewFileWriter = csv.writer(fCSV, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL, lineterminator='\n')
+    reviewFileWriter = csv.writer(fCsv, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL, lineterminator='\n')
     
-    fCSV = _addHeadersToCSV(fCSV)
+    fCsv = _addHeadersToCSV(fCsv)
 
     for review in reviews:
         reviewFileWriter.writerow([review.Id, 
@@ -254,10 +254,10 @@ def batchWriteToCsv(reviews, fCSV):
                                     review.TravelDate,
                                     review.Title,
                                     review.Text])
-    return fCSV
+    return fCsv
 
 
-def streamReviewsToCSV(
+def streamReviewsToCsv(
         max=5, 
         pathCSV='./data/raw/myreviews.csv', 
         baseUrl='https://www.tripadvisor.com/Airline_Review-d8729017-Reviews-Alaska-Airlines.html', 
