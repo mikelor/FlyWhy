@@ -289,7 +289,7 @@ def runDefault():
               review.Title,
               review.Text)
 
-    writeToCsv(reviews, 'myreviews.csv', mode='w')
+    writeToCsv(reviews, './data/raw/myreviews.csv', mode='w')
 
 if __name__ == "__main__":
     runDefault()
