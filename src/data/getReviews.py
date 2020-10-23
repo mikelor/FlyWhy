@@ -238,7 +238,7 @@ def batchWriteToCsv(reviews, fCsv):
     
     reviewFileWriter = csv.writer(fCsv, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL, lineterminator='\n')
     
-    fCsv = _addHeadersToCSV(fCsv)
+    fCsv = _addHeadersToCsv(fCsv)
 
     for review in reviews:
         reviewFileWriter.writerow([review.Id, 
@@ -259,7 +259,7 @@ def batchWriteToCsv(reviews, fCsv):
 
 def streamReviewsToCsv(
         max=5, 
-        pathCSV='./data/raw/myreviews.csv', 
+        pathCsv='./data/raw/myreviews.csv', 
         baseUrl='https://www.tripadvisor.com/Airline_Review-d8729017-Reviews-Alaska-Airlines.html', 
         preview=False):
     """
@@ -267,7 +267,7 @@ def streamReviewsToCsv(
 
     Parameters:
         - max: stop after this number of reviews is reached, or set to None to continue exhaustively
-        - pathCSV: file path to save the desired csv file 
+        - pathCsv: file path to save the desired csv file 
         - preview: print the results to terminal
 
     """
@@ -281,8 +281,8 @@ def streamReviewsToCsv(
     userReviewDriver = startWebDriver()
 
     # Open a new CSV file and add the headers.  Note: it will clobber an existing file.
-    fReviewCSV = open(pathCSV, "w", encoding="utf-8")
-    fReviewCSV = _addHeadersToCSV(fReviewCSV)
+    fReviewCsv = open(pathCsv, "w", encoding="utf-8")
+    fReviewCsv = _addHeadersToCsv(fReviewCsv)
 
     # Get the Reviews for given airline at the base url
     driver.get(baseUrl)
@@ -320,7 +320,7 @@ def streamReviewsToCsv(
                     review.Text]]))
 
         # Batch save reviews to file
-        fReviewCSV = appendToCsv(reviewSubset, fReviewCSV)
+        fReviewCsv = appendToCsv(reviewSubset, fReviewCsv)
 
         # Update counter
         offset += len(reviewSubset)
@@ -331,8 +331,8 @@ def streamReviewsToCsv(
             break
 
     # Cleanup
-    fReviewCSV.close()
+    fReviewCsv.close()
     
 
 if __name__ == "__main__":
-    streamReviewsToCSV(max=10, preview=False)
+    streamReviewsToCsv(max=10, preview=False)
