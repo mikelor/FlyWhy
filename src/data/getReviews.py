@@ -231,7 +231,8 @@ def _addHeadersToCsv(fCsv):
                                 "Date",
                                 "TravelDate",
                                 "Title",
-                                "Text"])
+                                "Text",
+                                "CategoryRatings"])
 
     return fCsv
 
@@ -254,7 +255,8 @@ def appendToCsv(reviews, fCsv):
                                     review.Date,
                                     review.TravelDate,
                                     review.Title,
-                                    review.Text])
+                                    review.Text,
+                                    review.CategoryRatings])
 
     return fCsv
 
@@ -279,7 +281,8 @@ def batchWriteToCsv(reviews, fCsv):
                                     review.Date,
                                     review.TravelDate,
                                     review.Title,
-                                    review.Text])
+                                    review.Text,
+                                    review.CategoryRatings])
     return fCsv
 
 
