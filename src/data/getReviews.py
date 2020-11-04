@@ -31,6 +31,7 @@ class Review:
 
         self.Itinerary = ""
         self.Reviewer = ""
+        self.CategoryRatings = {}
 
     def setItinerary(self, itinerary):
         self.Itinerary = itinerary
@@ -111,7 +112,7 @@ def getReviewsForUrl(driver, userReviewDriver, url):
     """
     # Get the review url page
     driver.get(url)
-    time.sleep(2)
+    time.sleep(1)
 
     ## companyName = driver.find_element_by_xpath('//h1[@class="_3ggwzaPV"]')
     
@@ -184,6 +185,31 @@ def getReviewDetail(userReviewDriver, reviewDiv, review):
     name = userReviewDiv.find_element_by_xpath('//div[@class="username mo"]/span').text 
     location = userReviewDiv.find_element_by_xpath('//div[@class="location"]/span').text 
 
+    # Gather Category Ratings
+    # This returns a collection of divs that contain both the bubble rating and rating description
+    # I'm iterating through the collection and using the modulus function to alternate between parsing
+    # I'm sure there's a more elegant way to do this
+    ratingElements = userReviewDiv.find_elements_by_xpath('//div[@id="review_' + review.Id + '"]//li[@class="recommend-answer"]/div')
+    starRatings = []
+    ratingCategories = []
+    x = 0
+    for ratingElement in ratingElements:
+        if(x % 2) == 0:
+            ratingString = (ratingElement.get_attribute('class').split())[1]
+            starRating = (int(ratingString[-2:]))
+            starRating = starRating/10
+            starRatings.append(starRating)
+        else:
+            category = ratingElement.text
+            ratingCategories.append(category)
+
+        x = x + 1
+
+    x = 0
+    for categoryText in ratingCategories:
+        review.CategoryRatings[categoryText] = starRatings[x]
+        x = x + 1
+
     review.setReviewer(Reviewer(id, name, location))
 
     return review    
@@ -205,7 +231,8 @@ def _addHeadersToCsv(fCsv):
                                 "Date",
                                 "TravelDate",
                                 "Title",
-                                "Text"])
+                                "Text",
+                                "CategoryRatings"])
 
     return fCsv
 
@@ -228,7 +255,8 @@ def appendToCsv(reviews, fCsv):
                                     review.Date,
                                     review.TravelDate,
                                     review.Title,
-                                    review.Text])
+                                    review.Text,
+                                    review.CategoryRatings])
 
     return fCsv
 
@@ -253,7 +281,8 @@ def batchWriteToCsv(reviews, fCsv):
                                     review.Date,
                                     review.TravelDate,
                                     review.Title,
-                                    review.Text])
+                                    review.Text,
+                                    review.CategoryRatings])
     return fCsv
 
 
@@ -286,7 +315,7 @@ def streamReviewsToCsv(
 
     # Get the Reviews for given airline at the base url
     driver.get(baseUrl)
-    time.sleep(3) 
+    time.sleep(2) 
 
     # Get the total review count for informational purposes
     airlineReviewCountClassId = '_2tNtmCyi'
