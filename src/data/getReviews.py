@@ -31,6 +31,7 @@ class Review:
 
         self.Itinerary = ""
         self.Reviewer = ""
+        self.CategoryRatings = {}
 
     def setItinerary(self, itinerary):
         self.Itinerary = itinerary
@@ -189,17 +190,24 @@ def getReviewDetail(userReviewDriver, reviewDiv, review):
     # I'm iterating through the collection and using the modulus function to alternate between parsing
     # I'm sure there's a more elegant way to do this
     ratingElements = userReviewDiv.find_elements_by_xpath('//div[@id="review_' + review.Id + '"]//li[@class="recommend-answer"]/div')
+    starRatings = []
+    ratingCategories = []
     x = 0
     for ratingElement in ratingElements:
         if(x % 2) == 0:
             ratingString = (ratingElement.get_attribute('class').split())[1]
             starRating = (int(ratingString[-2:]))
             starRating = starRating/10
-            print(starRating)
+            starRatings.append(starRating)
         else:
-            description = ratingElement.text
-            print(description)
+            category = ratingElement.text
+            ratingCategories.append(category)
 
+        x = x + 1
+
+    x = 0
+    for categoryText in ratingCategories:
+        review.CategoryRatings[categoryText] = starRatings[x]
         x = x + 1
 
     review.setReviewer(Reviewer(id, name, location))
