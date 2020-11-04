@@ -181,7 +181,11 @@ def getReviewDetail(userReviewDriver, reviewDiv, review):
     review.Text = userReviewDiv.find_element_by_xpath('//div[@class="entry"]/p').text
 
     # Gather information about the reviewer 
+    # Remove Pre/Post Text and Isolate the UID (eg UID_A455850D086316E0157BE50C4EB2115E-SRC_773635392). 
+    # Fixes Issue #15
     id = userReviewDiv.find_element_by_xpath('//div[@class="member_info"]/div').get_attribute('id')  # TODO: Parse the user ID string to just the substring 
+    id = (((id.split('_'))[1]).split('-'))[0]
+    
     name = userReviewDiv.find_element_by_xpath('//div[@class="username mo"]/span').text 
     location = userReviewDiv.find_element_by_xpath('//div[@class="location"]/span').text 
 
