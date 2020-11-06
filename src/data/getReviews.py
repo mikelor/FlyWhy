@@ -182,6 +182,9 @@ def getReviewDetail(userReviewDriver, reviewDiv, review):
 
     # Gather information about the reviewer 
     id = userReviewDiv.find_element_by_xpath('//div[@class="member_info"]/div').get_attribute('id')  # TODO: Parse the user ID string to just the substring 
+    # Remove Pre/Post Text and Isolate the UID (eg UID_A455850D086316E0157BE50C4EB2115E-SRC_773635392). 
+    id = (((id.split('_'))[1]).split('-'))[0]
+
     name = userReviewDiv.find_element_by_xpath('//div[@class="username mo"]/span').text 
     location = userReviewDiv.find_element_by_xpath('//div[@class="location"]/span').text 
 
@@ -192,8 +195,8 @@ def getReviewDetail(userReviewDriver, reviewDiv, review):
     ratingElements = userReviewDiv.find_elements_by_xpath('//div[@id="review_' + review.Id + '"]//li[@class="recommend-answer"]/div')
     starRatings = []
     ratingCategories = []
-    x = 0
-    for ratingElement in ratingElements:
+ 
+    for x, ratingElement in enumerate(ratingElements):
         if(x % 2) == 0:
             ratingString = (ratingElement.get_attribute('class').split())[1]
             starRating = (int(ratingString[-2:]))
@@ -203,12 +206,10 @@ def getReviewDetail(userReviewDriver, reviewDiv, review):
             category = ratingElement.text
             ratingCategories.append(category)
 
-        x = x + 1
 
-    x = 0
-    for categoryText in ratingCategories:
+    for x, categoryText in enumerate(ratingCategories):
         review.CategoryRatings[categoryText] = starRatings[x]
-        x = x + 1
+
 
     review.setReviewer(Reviewer(id, name, location))
 
