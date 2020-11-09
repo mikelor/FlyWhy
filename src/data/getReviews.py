@@ -1,7 +1,6 @@
 import csv
 import logging
 import platform
-import time
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -112,9 +111,6 @@ def getReviewsForUrl(driver, userReviewDriver, url):
     """
     # Get the review url page
     driver.get(url)
-    time.sleep(1)
-
-    ## companyName = driver.find_element_by_xpath('//h1[@class="_3ggwzaPV"]')
     
     reviews = []
     reviewDivs = driver.find_elements_by_xpath('//div[@data-reviewid]')
@@ -170,7 +166,6 @@ def getReviewDetail(userReviewDriver, reviewDiv, review):
     """
     userReviewUrl = reviewDiv.find_element_by_class_name('ocfR3SKN').get_attribute('href')
     userReviewDriver.get(userReviewUrl)
-    time.sleep(1)
 
     userReviewDiv = userReviewDriver.find_element_by_xpath('//div[@id="review_' + review.Id + '"]') 
 
@@ -305,10 +300,12 @@ def streamReviewsToCsv(
 
     # Start the primary webdriver that loops through the pages of reviews
     driver = startWebDriver()
+    driver.implicitly_wait(5) 
     
     # Startup a second webdriver to bring up more detail pages on the user review while
     # still maintaining the original driver to page through all reviews
     userReviewDriver = startWebDriver()
+    userReviewDriver.implicitly_wait(5)
 
     # Open a new CSV file and add the headers.  Note: it will clobber an existing file.
     fReviewCsv = open(pathCsv, "w", encoding="utf-8")
@@ -316,7 +313,6 @@ def streamReviewsToCsv(
 
     # Get the Reviews for given airline at the base url
     driver.get(baseUrl)
-    time.sleep(2) 
 
     # Get the total review count for informational purposes
     airlineReviewCountClassId = '_2tNtmCyi'
