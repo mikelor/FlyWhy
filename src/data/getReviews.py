@@ -309,31 +309,6 @@ def appendToCsv(reviews, fCsv):
     return fCsv
 
 
-def batchWriteToCsv(reviews, fCsv):
-    """ Write out the data (with headers) to a csv filestream handle in one batch. """
-    
-    reviewFileWriter = csv.writer(fCsv, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL, lineterminator='\n')
-    
-    fCsv = _addHeadersToCsv(fCsv)
-
-    for review in reviews:
-        reviewFileWriter.writerow([review.Id, 
-                                    review.Rating, 
-                                    review.Reviewer.Id,
-                                    review.Reviewer.Name,
-                                    review.Reviewer.Location,
-                                    review.Itinerary.Origin, 
-                                    review.Itinerary.Destination, 
-                                    review.Itinerary.Region, 
-                                    review.Itinerary.Cabin,
-                                    review.Date,
-                                    review.TravelDate,
-                                    review.Title,
-                                    review.Text,
-                                    review.CategoryRatings])
-    return fCsv
-
-
 def streamReviewsToCsv(
         max=5, 
         pathCsv='./data/raw/myreviews.csv', 
