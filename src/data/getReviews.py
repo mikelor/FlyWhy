@@ -1,10 +1,15 @@
 import csv
 import logging
+from logging import log, raiseExceptions
 import platform
 
+
+import selenium
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
+from selenium.common.exceptions import NoSuchElementException
+
 
 logging.basicConfig(level=logging.INFO)
 
@@ -75,7 +80,6 @@ def startWebDriverService():
     service = Service()
     service.start()
     driver = webdriver.Remote(service.service_url)
-
     return driver
 
 
@@ -85,7 +89,6 @@ def startWebDriver():
     """
     options = Options()
     options.headless = True
-
     driver = webdriver.Chrome(getChromeDriverPath(), options=options)
     return driver
 
@@ -112,16 +115,17 @@ def getReviewsForUrl(driver, userReviewDriver, url):
     # Get the review url page
     driver.get(url)
     
+
+    reviewDivs = getReviewDivs(driver)
+    
     reviews = []
-    reviewDivs = driver.find_elements_by_xpath('//div[@data-reviewid]')
     for reviewDiv in reviewDivs:
-        reviewId = reviewDiv.get_attribute('data-reviewid') 
+        reviewId = getReviewId(reviewDiv)
         rating   = getReviewRating(reviewDiv)
         review   = Review(reviewId, rating)
 
         # Get Itinerary
-        review.setItinerary(getReviewItinerary(reviewDiv))
-        
+        review.setItinerary(getReviewItinerary(reviewId, reviewDiv))
         review = getReviewDetail(userReviewDriver, reviewDiv, review)
         
         # Add the review to the list
@@ -129,6 +133,13 @@ def getReviewsForUrl(driver, userReviewDriver, url):
 
     return reviews
 
+def getReviewDivs(driver):
+    reviewDivs = driver.find_elements_by_xpath('//div[@data-reviewid]')
+    return reviewDivs
+
+def getReviewId(reviewDiv):
+    reviewId = reviewDiv.get_attribute('data-reviewid') 
+    return reviewId
 
 def getReviewRating(reviewDiv):
     """ The rating for the review is stored as a class on an inner span with two classes applied
@@ -143,20 +154,32 @@ def getReviewRating(reviewDiv):
     return rating
 
 
-def getReviewItinerary(reviewDiv):
+def getReviewItinerary(reviewId, reviewDiv):
     """ In this case, we're considering an Itinerary to be a reviewer's origin, destination, region of travel, and class of cabin for 
     travel. We don't have any specifics such as the Date of Travel (other than the "month", or date of review)
     """
-    originDestinationString = (reviewDiv.find_elements_by_class_name('_3tp-5a1G')[0]).text
-    originDestinationList = originDestinationString.split(' - ')
 
-    region =  (reviewDiv.find_elements_by_class_name('_3tp-5a1G')[1]).text
-    cabin =  (reviewDiv.find_elements_by_class_name('_3tp-5a1G')[2]).text
+    originDestinationList = []
+    region = ""
+    cabin = ""
 
+    try:
+        itineraryItems = (reviewDiv.find_elements_by_class_name('_3tp-5a1G'))
+
+        for x, itineraryItem in enumerate(itineraryItems):
+            if x == 0:
+                originDestinationList = itineraryItem.text.split(' - ')
+            elif x == 1:
+                region = itineraryItem.text
+            elif x == 2:
+                cabin = itineraryItem.text
+
+    except NoSuchElementException:
+        logging.info(f"No Reviewer.Id found for Review.Id: {reviewId}")   
+    
     itinerary = Itinerary(originDestinationList[0], originDestinationList[1], region, cabin)
 
     return itinerary
-
 
 def getReviewDetail(userReviewDriver, reviewDiv, review):
     """ Dive in a little deeper on this review by finding and then calling the detail review page.
@@ -176,21 +199,16 @@ def getReviewDetail(userReviewDriver, reviewDiv, review):
     review.Text = userReviewDiv.find_element_by_xpath('//div[@class="entry"]/p').text
 
     # Gather information about the reviewer 
-    id = userReviewDiv.find_element_by_xpath('//div[@class="member_info"]/div').get_attribute('id')  # TODO: Parse the user ID string to just the substring 
-    # Remove Pre/Post Text and Isolate the UID (eg UID_A455850D086316E0157BE50C4EB2115E-SRC_773635392). 
-    id = (((id.split('_'))[1]).split('-'))[0]
 
-    name = userReviewDiv.find_element_by_xpath('//div[@class="username mo"]/span').text 
-    location = userReviewDiv.find_element_by_xpath('//div[@class="location"]/span').text 
-
-    # Gather Category Ratings
-    # This returns a collection of divs that contain both the bubble rating and rating description
-    # I'm iterating through the collection and using the modulus function to alternate between parsing
-    # I'm sure there's a more elegant way to do this
-    ratingElements = userReviewDiv.find_elements_by_xpath('//div[@id="review_' + review.Id + '"]//li[@class="recommend-answer"]/div')
+    id = getReviewerId(review.Id, userReviewDiv)
+    name = getReviewerName(review.Id, userReviewDiv)
+    location = getReviewerLocation(review.Id, userReviewDiv)
+    ratingElements = getRatingElements(review.Id, userReviewDiv)
+    
     starRatings = []
     ratingCategories = []
  
+    # Iterate through the collection and using the modulus function to alternate between parsing
     for x, ratingElement in enumerate(ratingElements):
         if(x % 2) == 0:
             ratingString = (ratingElement.get_attribute('class').split())[1]
@@ -205,11 +223,45 @@ def getReviewDetail(userReviewDriver, reviewDiv, review):
     for x, categoryText in enumerate(ratingCategories):
         review.CategoryRatings[categoryText] = starRatings[x]
 
-
     review.setReviewer(Reviewer(id, name, location))
 
     return review    
 
+def getReviewerId(reviewId, userReviewDiv):
+    id = ""
+    try:
+        id = userReviewDiv.find_element_by_xpath('//div[@class="member_info"]/div').get_attribute('id') 
+        # Remove Pre/Post Text and Isolate the UID (eg UID_A455850D086316E0157BE50C4EB2115E-SRC_773635392). 
+        id = (((id.split('_'))[1]).split('-'))[0]
+    except NoSuchElementException:
+        logging.info(f"No Reviewer.Id found for Review.Id: {reviewId}")
+
+    return id
+
+def getReviewerLocation(reviewId, userReviewDiv):
+    location = ""
+    try:
+        location = userReviewDiv.find_element_by_xpath('//div[@class="location"]/span').text
+    except NoSuchElementException:
+        logging.info(f"No location found for Review.Id: {reviewId}")
+
+    return location
+    
+def getReviewerName(reviewId, userReviewDiv):
+    name=""
+    try:
+        name = userReviewDiv.find_element_by_xpath('//div[@class="username mo"]/span').text
+    except NoSuchElementException:
+        logging.info(f"No name found for Review.Id: {reviewId}")
+    
+    return name
+
+def getRatingElements(reviewId, userReviewDiv):
+    """
+    This returns a collection of divs that contain both the bubble rating and rating description
+    """
+    ratingElements = userReviewDiv.find_elements_by_xpath('//div[@id="review_' + reviewId + '"]//li[@class="recommend-answer"]/div')
+    return ratingElements
 
 def _addHeadersToCsv(fCsv):
     """ Add headers to a CSV filestream handle """
@@ -300,12 +352,12 @@ def streamReviewsToCsv(
 
     # Start the primary webdriver that loops through the pages of reviews
     driver = startWebDriver()
-    driver.implicitly_wait(5) 
+    driver.implicitly_wait(15) 
     
     # Startup a second webdriver to bring up more detail pages on the user review while
     # still maintaining the original driver to page through all reviews
     userReviewDriver = startWebDriver()
-    userReviewDriver.implicitly_wait(5)
+    userReviewDriver.implicitly_wait(15)
 
     # Open a new CSV file and add the headers.  Note: it will clobber an existing file.
     fReviewCsv = open(pathCsv, "w", encoding="utf-8")
@@ -361,4 +413,4 @@ def streamReviewsToCsv(
     
 
 if __name__ == "__main__":
-    streamReviewsToCsv(max=10, preview=False)
+    streamReviewsToCsv(max=20000, preview=False)
