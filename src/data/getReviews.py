@@ -160,6 +160,7 @@ def getReviewItinerary(reviewId, reviewDiv):
     travel. We don't have any specifics such as the Date of Travel (other than the "month", or date of review)
     """
 
+    originDestinationString = "  -  "
     originDestinationList = []
     region = ""
     cabin = ""
@@ -169,15 +170,17 @@ def getReviewItinerary(reviewId, reviewDiv):
 
         for x, itineraryItem in enumerate(itineraryItems):
             if x == 0:
-                originDestinationList = itineraryItem.text.split(' - ')
+                originDestinationString = itineraryItem.text
+
             elif x == 1:
                 region = itineraryItem.text
             elif x == 2:
                 cabin = itineraryItem.text
 
     except NoSuchElementException:
-        logging.warn(f"No Reviewer.Id found for Review.Id: {reviewId}")   
-    
+        logging.warn(f"No Reviewer.Id found for Review.Id: {reviewId}") 
+
+    originDestinationList = originDestinationString.split(' - ')
     itinerary = Itinerary(originDestinationList[0], originDestinationList[1], region, cabin)
 
     return itinerary
