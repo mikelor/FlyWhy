@@ -11,7 +11,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.common.exceptions import NoSuchElementException
 
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARN)
 
 D_PATH_CHROMEDRIVER = {
     'Windows':'./thirdparty/chromedriver.exe',
@@ -89,6 +89,7 @@ def startWebDriver():
     """
     options = Options()
     options.headless = True
+    options.add_argument('log-level=1') # Set chrome to log WARNINGs and above   
     driver = webdriver.Chrome(getChromeDriverPath(), options=options)
     return driver
 
@@ -175,7 +176,7 @@ def getReviewItinerary(reviewId, reviewDiv):
                 cabin = itineraryItem.text
 
     except NoSuchElementException:
-        logging.info(f"No Reviewer.Id found for Review.Id: {reviewId}")   
+        logging.warn(f"No Reviewer.Id found for Review.Id: {reviewId}")   
     
     itinerary = Itinerary(originDestinationList[0], originDestinationList[1], region, cabin)
 
@@ -234,7 +235,7 @@ def getReviewerId(reviewId, userReviewDiv):
         # Remove Pre/Post Text and Isolate the UID (eg UID_A455850D086316E0157BE50C4EB2115E-SRC_773635392). 
         id = (((id.split('_'))[1]).split('-'))[0]
     except NoSuchElementException:
-        logging.info(f"No Reviewer.Id found for Review.Id: {reviewId}")
+        logging.warn(f"No Reviewer.Id found for Review.Id: {reviewId}")
 
     return id
 
@@ -243,7 +244,7 @@ def getReviewerLocation(reviewId, userReviewDiv):
     try:
         location = userReviewDiv.find_element_by_xpath('//div[@class="location"]/span').text
     except NoSuchElementException:
-        logging.info(f"No location found for Review.Id: {reviewId}")
+        logging.warn(f"No location found for Review.Id: {reviewId}")
 
     return location
     
@@ -252,7 +253,7 @@ def getReviewerName(reviewId, userReviewDiv):
     try:
         name = userReviewDiv.find_element_by_xpath('//div[@class="username mo"]/span').text
     except NoSuchElementException:
-        logging.info(f"No name found for Review.Id: {reviewId}")
+        logging.warn(f"No name found for Review.Id: {reviewId}")
     
     return name
 
@@ -344,7 +345,7 @@ def streamReviewsToCsv(
     # Get the total review count for informational purposes
     airlineReviewCountClassId = '_2tNtmCyi'
     reviewCount = getReviewCount(driver, airlineReviewCountClassId)
-    logging.info(f"Fetching {max} of {reviewCount} reviews...")
+    print(f"Fetching {max} of {reviewCount} reviews...")
 
     # Loop through all the results or until you hit the max and stream results
     offset = 0
@@ -358,7 +359,7 @@ def streamReviewsToCsv(
         # Preview reviews in terminal
         if preview:
             for review in reviewSubset:
-                logging.info("|".join([str(x) for x in [review.Id,
+                print("|".join([str(x) for x in [review.Id,
                     review.Rating,
                     review.Reviewer.Id,
                     review.Reviewer.Name,
@@ -377,10 +378,11 @@ def streamReviewsToCsv(
 
         # Update counter
         offset += len(reviewSubset)
-        logging.info(f"Total retrieved: {offset}")
+        print(f"{offset} Reviews Processed @ {reviewUrl}")
+
 
         if max and offset >= max: 
-            logging.info("Desired max reviews reached, stopping now.")
+            print("Desired max {max} reviews reached {offset}, stopping now.")
             break
 
     # Cleanup
@@ -388,4 +390,8 @@ def streamReviewsToCsv(
     
 
 if __name__ == "__main__":
-    streamReviewsToCsv(max=20000, preview=False)
+    streamReviewsToCsv(
+        20000,
+        './data/raw/myreviews.csv',
+        'https://www.tripadvisor.com/Airline_Review-d8729017-Reviews-Alaska-Airlines.html',
+        False)
