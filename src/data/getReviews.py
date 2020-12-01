@@ -314,7 +314,8 @@ def appendToCsv(reviews, fCsv):
 
 
 def streamReviewsToCsv(
-        max=5, 
+        max=5,
+        offset=0, 
         pathCsv='./data/raw/myreviews.csv', 
         baseUrl='https://www.tripadvisor.com/Airline_Review-d8729017-Reviews-Alaska-Airlines.html', 
         preview=False):
@@ -327,7 +328,12 @@ def streamReviewsToCsv(
         - preview: print the results to terminal
 
     """
-    urlTemplate = baseUrl.replace('.html', '-or{}.html')
+    urlTemplate = baseUrl
+
+    # baseUrl will not contain a template if started at root url, so let's add it
+    if baseUrl.find('-or{}.html') == -1:
+        urlTemplate = baseUrl.replace('.html', '-or{}.html')
+
 
     # Start the primary webdriver that loops through the pages of reviews
     driver = startWebDriver()
@@ -351,7 +357,6 @@ def streamReviewsToCsv(
     print(f"Fetching {max} of {reviewCount} reviews...")
 
     # Loop through all the results or until you hit the max and stream results
-    offset = 0
     while(True):
         reviewUrl = urlTemplate.format(offset)
         reviewSubset = getReviewsForUrl(driver, userReviewDriver, reviewUrl)
@@ -395,6 +400,7 @@ def streamReviewsToCsv(
 if __name__ == "__main__":
     streamReviewsToCsv(
         20000,
+        0,
         './data/raw/myreviews.csv',
-        'https://www.tripadvisor.com/Airline_Review-d8729017-Reviews-Alaska-Airlines.html',
+        'https://www.tripadvisor.com/Airline_Review-d8729017-Reviews-Alaska-Airlines-or{}.html',
         False)
