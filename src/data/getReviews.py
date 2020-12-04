@@ -11,7 +11,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.common.exceptions import NoSuchElementException
 
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARN)
 
 D_PATH_CHROMEDRIVER = {
     'Windows':'./thirdparty/chromedriver.exe',
@@ -89,6 +89,7 @@ def startWebDriver():
     """
     options = Options()
     options.headless = True
+    options.add_argument('log-level=1') # Set chrome to log WARNINGs and above   
     driver = webdriver.Chrome(getChromeDriverPath(), options=options)
     return driver
 
@@ -159,6 +160,7 @@ def getReviewItinerary(reviewId, reviewDiv):
     travel. We don't have any specifics such as the Date of Travel (other than the "month", or date of review)
     """
 
+    originDestinationString = "  -  "
     originDestinationList = []
     region = ""
     cabin = ""
@@ -168,15 +170,17 @@ def getReviewItinerary(reviewId, reviewDiv):
 
         for x, itineraryItem in enumerate(itineraryItems):
             if x == 0:
-                originDestinationList = itineraryItem.text.split(' - ')
+                originDestinationString = itineraryItem.text
+
             elif x == 1:
                 region = itineraryItem.text
             elif x == 2:
                 cabin = itineraryItem.text
 
     except NoSuchElementException:
-        logging.info(f"No Reviewer.Id found for Review.Id: {reviewId}")   
-    
+        logging.warning(f"No Reviewer.Id found for Review.Id: {reviewId}") 
+
+    originDestinationList = originDestinationString.split(' - ')
     itinerary = Itinerary(originDestinationList[0], originDestinationList[1], region, cabin)
 
     return itinerary
@@ -234,7 +238,7 @@ def getReviewerId(reviewId, userReviewDiv):
         # Remove Pre/Post Text and Isolate the UID (eg UID_A455850D086316E0157BE50C4EB2115E-SRC_773635392). 
         id = (((id.split('_'))[1]).split('-'))[0]
     except NoSuchElementException:
-        logging.info(f"No Reviewer.Id found for Review.Id: {reviewId}")
+        logging.warning(f"No Reviewer.Id found for Review.Id: {reviewId}")
 
     return id
 
@@ -243,7 +247,7 @@ def getReviewerLocation(reviewId, userReviewDiv):
     try:
         location = userReviewDiv.find_element_by_xpath('//div[@class="location"]/span').text
     except NoSuchElementException:
-        logging.info(f"No location found for Review.Id: {reviewId}")
+        logging.warning(f"No location found for Review.Id: {reviewId}")
 
     return location
     
@@ -252,7 +256,7 @@ def getReviewerName(reviewId, userReviewDiv):
     try:
         name = userReviewDiv.find_element_by_xpath('//div[@class="username mo"]/span').text
     except NoSuchElementException:
-        logging.info(f"No name found for Review.Id: {reviewId}")
+        logging.warning(f"No name found for Review.Id: {reviewId}")
     
     return name
 
@@ -309,35 +313,11 @@ def appendToCsv(reviews, fCsv):
     return fCsv
 
 
-def batchWriteToCsv(reviews, fCsv):
-    """ Write out the data (with headers) to a csv filestream handle in one batch. """
-    
-    reviewFileWriter = csv.writer(fCsv, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL, lineterminator='\n')
-    
-    fCsv = _addHeadersToCsv(fCsv)
-
-    for review in reviews:
-        reviewFileWriter.writerow([review.Id, 
-                                    review.Rating, 
-                                    review.Reviewer.Id,
-                                    review.Reviewer.Name,
-                                    review.Reviewer.Location,
-                                    review.Itinerary.Origin, 
-                                    review.Itinerary.Destination, 
-                                    review.Itinerary.Region, 
-                                    review.Itinerary.Cabin,
-                                    review.Date,
-                                    review.TravelDate,
-                                    review.Title,
-                                    review.Text,
-                                    review.CategoryRatings])
-    return fCsv
-
-
 def streamReviewsToCsv(
-        max=5, 
-        pathCsv='./data/raw/myreviews.csv', 
-        baseUrl='https://www.tripadvisor.com/Airline_Review-d8729017-Reviews-Alaska-Airlines.html', 
+        max=5,
+        offset=0, 
+        pathCsv='./data/raw/myreviews{}.csv', 
+        baseUrl='https://www.tripadvisor.com/Airline_Review-d8729017-Reviews-Alaska-Airlines-or{}.html', 
         preview=False):
     """
     Fetch reviews by page and stream to CSV file
@@ -348,7 +328,12 @@ def streamReviewsToCsv(
         - preview: print the results to terminal
 
     """
-    urlTemplate = baseUrl.replace('.html', '-or{}.html')
+    urlTemplate = baseUrl
+
+    # baseUrl will not contain a template if started at root url, so let's add it
+    if baseUrl.find('-or{}.html') == -1:
+        urlTemplate = baseUrl.replace('.html', '-or{}.html')
+
 
     # Start the primary webdriver that loops through the pages of reviews
     driver = startWebDriver()
@@ -360,7 +345,7 @@ def streamReviewsToCsv(
     userReviewDriver.implicitly_wait(15)
 
     # Open a new CSV file and add the headers.  Note: it will clobber an existing file.
-    fReviewCsv = open(pathCsv, "w", encoding="utf-8")
+    fReviewCsv = open(pathCsv.format(offset), "w", encoding="utf-8")
     fReviewCsv = _addHeadersToCsv(fReviewCsv)
 
     # Get the Reviews for given airline at the base url
@@ -369,10 +354,9 @@ def streamReviewsToCsv(
     # Get the total review count for informational purposes
     airlineReviewCountClassId = '_2tNtmCyi'
     reviewCount = getReviewCount(driver, airlineReviewCountClassId)
-    logging.info(f"Fetching {max} of {reviewCount} reviews...")
+    print(f"Fetching {max} of {reviewCount} reviews...")
 
     # Loop through all the results or until you hit the max and stream results
-    offset = 0
     while(True):
         reviewUrl = urlTemplate.format(offset)
         reviewSubset = getReviewsForUrl(driver, userReviewDriver, reviewUrl)
@@ -383,7 +367,7 @@ def streamReviewsToCsv(
         # Preview reviews in terminal
         if preview:
             for review in reviewSubset:
-                logging.info("|".join([str(x) for x in [review.Id,
+                print("|".join([str(x) for x in [review.Id,
                     review.Rating,
                     review.Reviewer.Id,
                     review.Reviewer.Name,
@@ -402,10 +386,11 @@ def streamReviewsToCsv(
 
         # Update counter
         offset += len(reviewSubset)
-        logging.info(f"Total retrieved: {offset}")
+        print(f"{offset} Reviews Processed @ {reviewUrl}")
+
 
         if max and offset >= max: 
-            logging.info("Desired max reviews reached, stopping now.")
+            print("Desired max {max} reviews reached {offset}, stopping now.")
             break
 
     # Cleanup
@@ -413,4 +398,9 @@ def streamReviewsToCsv(
     
 
 if __name__ == "__main__":
-    streamReviewsToCsv(max=20000, preview=False)
+    streamReviewsToCsv(
+        20000,
+        0,
+        './data/raw/myreviews{}.csv',
+        'https://www.tripadvisor.com/Airline_Review-d8729017-Reviews-Alaska-Airlines-or{}.html',
+        False)
