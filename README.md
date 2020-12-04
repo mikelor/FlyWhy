@@ -11,6 +11,22 @@ The goals are threefold:
   1. Learn Python
   1. Learn Text Analytics and Natural Language Processing (NLP) algorithms
 
+## Getting Started
+Getting up and running with FlyWhy is pretty easy. At the moment, there is only one file that does all the work.
+```
+/src/data/getReviews.py
+```
+
+Its always helpful to create a new virtual environment
+```
+python -m venv flywhy
+.\flywhy\scripts\activate
+cd </flywhy>
+pip install -r requirements.txt
+python .\src\getReviews.py
+```
+
+
 ## Background on Prior Attempts			 
 Original attempt was to use Python on Linux (so this could eventually be run on Databricks in Azure Cloud), following the the technique outlined in this link, [NLP-with-Python/Web scraping Hilton Hawaiian Village TripAdvisor Reviews.py at master · susanli2016/NLP-with-Python (github.com)](https://github.com/susanli2016/NLP-with-Python/blob/master/Web%20scraping%20Hilton%20Hawaiian%20Village%20TripAdvisor%20Reviews.py). This script utilized the BeautifulSoup library for screen scraping. Unfortunately, the TripAdvisor site executed a lot of JavaScript which BS does not handle.
 
