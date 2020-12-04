@@ -178,7 +178,7 @@ def getReviewItinerary(reviewId, reviewDiv):
                 cabin = itineraryItem.text
 
     except NoSuchElementException:
-        logging.warn(f"No Reviewer.Id found for Review.Id: {reviewId}") 
+        logging.warning(f"No Reviewer.Id found for Review.Id: {reviewId}") 
 
     originDestinationList = originDestinationString.split(' - ')
     itinerary = Itinerary(originDestinationList[0], originDestinationList[1], region, cabin)
@@ -238,7 +238,7 @@ def getReviewerId(reviewId, userReviewDiv):
         # Remove Pre/Post Text and Isolate the UID (eg UID_A455850D086316E0157BE50C4EB2115E-SRC_773635392). 
         id = (((id.split('_'))[1]).split('-'))[0]
     except NoSuchElementException:
-        logging.warn(f"No Reviewer.Id found for Review.Id: {reviewId}")
+        logging.warning(f"No Reviewer.Id found for Review.Id: {reviewId}")
 
     return id
 
@@ -247,7 +247,7 @@ def getReviewerLocation(reviewId, userReviewDiv):
     try:
         location = userReviewDiv.find_element_by_xpath('//div[@class="location"]/span').text
     except NoSuchElementException:
-        logging.warn(f"No location found for Review.Id: {reviewId}")
+        logging.warning(f"No location found for Review.Id: {reviewId}")
 
     return location
     
@@ -256,7 +256,7 @@ def getReviewerName(reviewId, userReviewDiv):
     try:
         name = userReviewDiv.find_element_by_xpath('//div[@class="username mo"]/span').text
     except NoSuchElementException:
-        logging.warn(f"No name found for Review.Id: {reviewId}")
+        logging.warning(f"No name found for Review.Id: {reviewId}")
     
     return name
 
@@ -316,8 +316,8 @@ def appendToCsv(reviews, fCsv):
 def streamReviewsToCsv(
         max=5,
         offset=0, 
-        pathCsv='./data/raw/myreviews.csv', 
-        baseUrl='https://www.tripadvisor.com/Airline_Review-d8729017-Reviews-Alaska-Airlines.html', 
+        pathCsv='./data/raw/myreviews{}.csv', 
+        baseUrl='https://www.tripadvisor.com/Airline_Review-d8729017-Reviews-Alaska-Airlines-or{}.html', 
         preview=False):
     """
     Fetch reviews by page and stream to CSV file
@@ -345,7 +345,7 @@ def streamReviewsToCsv(
     userReviewDriver.implicitly_wait(15)
 
     # Open a new CSV file and add the headers.  Note: it will clobber an existing file.
-    fReviewCsv = open(pathCsv, "w", encoding="utf-8")
+    fReviewCsv = open(pathCsv.format(offset), "w", encoding="utf-8")
     fReviewCsv = _addHeadersToCsv(fReviewCsv)
 
     # Get the Reviews for given airline at the base url
@@ -401,6 +401,6 @@ if __name__ == "__main__":
     streamReviewsToCsv(
         20000,
         0,
-        './data/raw/myreviews.csv',
+        './data/raw/myreviews{}.csv',
         'https://www.tripadvisor.com/Airline_Review-d8729017-Reviews-Alaska-Airlines-or{}.html',
         False)
