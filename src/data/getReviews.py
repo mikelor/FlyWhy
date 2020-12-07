@@ -77,7 +77,7 @@ def startWebDriverService():
     of the chrome driver.
     TODO: Make it actually work.
     """
-    service = Service()
+    service = Service(D_PATH_CHROMEDRIVER)
     service.start()
     driver = webdriver.Remote(service.service_url)
     return driver
