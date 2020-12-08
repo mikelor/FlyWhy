@@ -25,8 +25,15 @@ cd </flywhy>
 pip install -r requirements.txt
 python .\src\getReviews.py
 ```
-
-
+## Comparing FlyWhy Dataset with TNMT Analysis
+According to the web article [The biggest pain points in air travel and how to fix them - TNMT](https://tnmt.com/the-biggest-pain-points-in-air-travel/), the analysis consisted of the following:
+  1. On TripAdvisor, we scraped more than 15,000 reviews of 12 major airlines to get an industry-wide perspective on how travelers review their travel experiences.
+  1. The data was sampled for 2019 to phase out the COVID-19 impact, which would skew the data to customer service and refund issues.
+  1. We then analyzed the data with the help of a Natural Language Processing (NPL) tool called Quid Netbase.
+  1. We looked at the topics travelers mentioned the most in their TripAdvisor reviews.
+  1. We need to identify the underlying sentiment of each review to understand which topics travelers consider pain points and gain points.
+  1. We ranked the major topic clusters according to whether they contain more positive reviews (labeled as a gain point) or more negative reviews (representing a pain point).
+  
 ## Background on Prior Attempts			 
 Original attempt was to use Python on Linux (so this could eventually be run on Databricks in Azure Cloud), following the the technique outlined in this link, [NLP-with-Python/Web scraping Hilton Hawaiian Village TripAdvisor Reviews.py at master · susanli2016/NLP-with-Python (github.com)](https://github.com/susanli2016/NLP-with-Python/blob/master/Web%20scraping%20Hilton%20Hawaiian%20Village%20TripAdvisor%20Reviews.py). This script utilized the BeautifulSoup library for screen scraping. Unfortunately, the TripAdvisor site executed a lot of JavaScript which BS does not handle.
 
